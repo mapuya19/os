@@ -39,6 +39,16 @@
         "xstddef": "cpp",
         "xstring": "cpp",
         "xtr1common": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "queue": "cpp",
+        "algorithm": "cpp",
+        "ctime": "cpp",
+        "deque": "cpp",
+        "iomanip": "cpp",
+        "vector": "cpp",
+        "xlocmon": "cpp",
+        "xloctime": "cpp",
+        "string": "cpp",
+        "cctype": "cpp"
     }
 }
