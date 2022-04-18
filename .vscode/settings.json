@@ -49,6 +49,7 @@
         "xlocmon": "cpp",
         "xloctime": "cpp",
         "string": "cpp",
-        "cctype": "cpp"
-    }
+        "cctype": "cpp",
+        "list": "cpp"
+    },
 }
