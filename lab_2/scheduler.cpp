@@ -5,10 +5,7 @@
 using namespace std;
 
 struct process {
-  // set (cycle)? equal to current stage
-  // decrement every 1ms cycle until 0, move to next stage
   int pid;
-  int cycle;
   int R1;
   int B1;
   int R2;
@@ -306,16 +303,12 @@ void fifo(int n, int q, int SA, process *p) {
       }
     }
 
-    if (cycle == 20) {
-      break;
-    }
-
     skipping:
       processes.push(current);
   }
  }
 
-void rr() {}
+void rr(int n, int q, int SA, process *p) {}
 
 int main() {
   int n;
@@ -346,7 +339,7 @@ int main() {
   if (SA == 1) {
     fifo(n, SA, q, p);
   } else {
-    rr();
+    rr(n, SA, q, p);
   }
 
   return 0;
