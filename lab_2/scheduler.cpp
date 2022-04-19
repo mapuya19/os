@@ -1,8 +1,7 @@
 #include <iostream>
 #include <string>
 #include <queue>
-#include <vector>
-#include <assert.h>
+#include <iomanip>
 using namespace std;
 
 struct process {
@@ -32,179 +31,289 @@ struct process {
   // terminated == 0
   int stage;
 
-  string toString() {
+  string print_state() {
+    if (state == 1) {
+      return "Ready";
+    } else if (state == 2) {
+      return "Run";
+    } else if (state == 3) {
+      return "Blocked";
+    } else if (state == 4) {
+      return "Ready";
+    } else if (state == 0) {
+      return "";
+    }
+  }
+
+  string print_stage() {
     if (stage == 1) {
-      return "R1";
+      return "R1 ";
     } else if (stage == 2) {
-      return "B1";
+      return "B1 ";
     } else if (stage == 3) {
-      return "R2";
+      return "R2 ";
     } else if (stage == 4) {
-      return "B2";
+      return "B2 ";
     } else if (stage == 5) {
-      return "terminate";
+      return "";
     } else {
-      return "none";
+      return "";
     }
   }
 };
 
-
+// print out each time
+template<typename T> void print_part(T t, const int& width, const char& separator) {
+    cout << left << setw(width) << setfill(separator) << t;
+}
 
 void fifo(int n, int q, int SA, process *p) {
   int cycle = 1;
   bool process_is_running = false;
   bool process_is_terminating = false;
-  int cycled = 0; // + 1 when all processes cycled
+  int cycled = 0;
   int terminated = 0;
-  vector<process> processes;
+  queue<process> processes;
+
+  const char separator = ' ';
+  const int cycle_width = 8;
+  const int process_width = 20;
 
   // fill queue
-  for (int i = 0; i < n; i++) {
-    if (p[i].pid != 0) {
-      processes.push_back(p[i]);
-    }
+  for (int i = 1; i <= n; i++) {
+    p[i].pid = i;
+    processes.push(p[i]);
   }
 
-  cout << "Cycle  ";
-  for (int i = 0; i < n; i++) {
-    cout << "P" << i << " State       ";
+  // print header
+  print_part("Cycle", cycle_width, separator);
+  for (int i = 1; i <= n; i++) {
+    print_part("P" + to_string(i) + " State", process_width, separator);
   }
   cout << endl;
 
   // cycle 1
   for (int i = 0; i < n; i++) {
-    vector<process> temp = processes;
-    process current = temp.front();
-    temp.erase(temp.begin());
-    
+    process current = processes.front();
+    processes.pop();
+
+    // start R1
     if (i == 0) {
       current.state = 2;
       current.stage = 1;
-      current.R1--;
-
-      cout << cycle << "      run R1";
-    } else {
+      process_is_running = true;
+    }
+    
+    // all other processes ready
+    else {
       current.state = 1;
+      current.stage = 1;
+    }
 
-      cout << cycle << "      " << current.state << " " << current.toString();
-    } 
+    processes.push(current);
   }
 
-  // cycles after 1
-  while (terminated != n) {
-    vector<process> temp = processes;
-    process current = temp.front();
-    temp.erase(temp.begin());
-    cycled++;
+  // cycle++;
+  print_part(cycle, cycle_width, separator);
 
-    cout << cycle;
+  // cycles after 1
+  while (terminated <= n) {
+    process current = processes.front();
+    processes.pop();
+    cycled++;
+    // cout << current.pid;
+
+    // if a process is not running
     if (process_is_running == false) {
+      // if current terminated, print blank
       if (current.state == 0 && current.stage == 0) {
-        continue;
-      } else if (current.state == 1 &&
-                 (current.stage == 1 || current.stage == 3)) {
+        print_part(current.print_state(), process_width, separator);
+        goto skipping;
+      }
+      
+      // if current is ready for R1 or R2
+      else if (current.state == 1 && (current.stage == 1 || current.stage == 3)) {
+        current.state = 2;
+
         if (current.stage == 1) {
           current.R1--;
-        } else if (current.stage == 2) {
+          print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
+        } else if (current.stage == 3) {
           current.R2--;
+          print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
         }
 
-        current.state = 2;
         process_is_running = true;
-      } else if (current.state == 4 && current.stage == 4) {
+      } 
+      
+      // if current is ready to terminate
+      else if (current.state == 4 && current.stage == 5) {
+        print_part("Terminate", process_width, separator);
         current.state = 0;
         current.stage = 0;
         process_is_terminating = true;
-        process_is_running == true;
-      } else if (current.state == 3 &&
-                 (current.stage == 2 || current.stage == 4)) {
-        // continue blocking B1 or B2
-        // if B1 finishes -> run R2
-        if (current.B1 == 0) {
-          current.stage = 3;
+        process_is_running = true;
+      }
+      
+      // if current is blocking B1 or B2
+      else if (current.state == 3 && (current.stage == 2 || current.stage == 4)) {
+        if (current.stage == 2) {
+          // if current B1 finishes, run R2
+          if (current.B1 == 0) {
+            current.state = 2;
+            current.stage = 3;
+            current.R2--;
+            print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
+            process_is_running = false;
+          } else {
+            current.B1--;
+            print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
+          }
         }
 
-        if (current.B2 == 0) {
-          current.state = 0;
-          current.stage = 0;
-          process_is_terminating = true;
+        else if (current.stage == 4) {
+          // if current B2 finishes, terminate
+          if (current.B2 == 0) {
+            print_part("Terminate", process_width, separator);
+            current.state = 0;
+            current.stage = 0;
+            cout << "\n\n";
+            cout << "Finished FIFO.";
+            break;
+          } else {
+            current.B2--;
+            print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
+          }
+        }
+      }
+    }
+
+    // if a process is running
+    else if (process_is_running == true) {
+      // if current is terminated
+      if (current.state == 0 && current.stage == 0) {
+        print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
+        goto skipping;
+      } 
+      
+      // if current is ready
+      else if (current.state == 1 && (current.stage == 1 || current.stage == 3)) {
+        print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
+      } 
+      
+      // if current is ready to terminate
+      else if (current.state == 4 || current.stage == 5) {
+        print_part(current.print_state(), process_width, separator);
+      }
+      
+      // if current is running R1 or R2
+      else if (current.state == 2 && (current.stage == 1 || current.stage == 3)) {
+        if (current.stage == 1) {
+          // if current R1 finishes, run B1
+          if (current.R1 == 0) {
+            current.state = 3;
+            current.stage = 2;
+            current.B1--;
+            
+            print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
+            process_is_running = false;
+          } else {
+            current.R1--;
+            print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
+          }
+        }
+
+        else if (current.stage == 3) {
+          // if current R2 finishes, run B2
+          if (current.R2 == 0) {
+            current.state = 3;
+            current.stage = 4;
+            current.B2--;
+
+            print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
+            process_is_running = false;
+          } else {
+            current.R2--;
+            print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
+          }
+        }
+      }
+
+      // if current is blocking B1 or B2      
+      else if (current.state == 3 && (current.stage == 2 || current.stage == 4)) {
+        if (current.stage == 2) {
+          if (current.B1 == 0) {
+            // set current ready
+            current.state = 1;
+            current.stage = 3;
+
+            // print ready
+            print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
+          } else {
+            current.B1--;
+            print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
+          }
+        }
+
+        else if (current.stage == 4) {
+          // if B2 finishes, set current ready to terminate
+          if (current.B2 == 0) {
+            current.state = 4;
+            current.stage = 5;
+            print_part(current.print_state(), process_width, separator);
+          } else {
+            current.B2--;
+            print_part(current.print_state() + " " + current.print_stage(), process_width, separator);
+          }
+        }
+      }
+    }
+
+    // if all processes have gone through the cycle
+    if (cycled == n) {
+      cycled = 0;
+      cycle++;
+
+      cout << endl;
+      print_part(cycle, cycle_width, separator);
+      
+      // if current will block in the next cycle
+      if (current.state == 2) {
+        if (current.stage == 1 && current.R1 == 0) {
+          process_is_running = false;
+        } else if (current.stage == 3 && current.R2 == 0) {
           process_is_running = false;
         }
       }
-    } 
-    
-    else if (process_is_running == true) {
-      if (current.state == 0 && current.stage == 0) {
-        continue;
-      } else if ((current.state == 1 &&
-                  (current.stage == 1 || current.stage == 3)) ||
-                 current.state == 4) {
-        // keep at ready
-      } else if (current.state == 2 && (current.stage == 1 || current.stage == 3)) {
-        // continue running R1 or R2
-        if (current.R1 == 0) {
-          current.stage = 2;
-        }
 
-        if (current.R2 == 0) {
-          current.stage == 4;
-        }
-
-        process_is_running == false;
-      } else if (current.state = 3 && (current.stage == 2 || current.stage == 4)) {
-        // continue blocking B1 or B2
-        if (current.stage == 2 && current.B1 != 0) {
-          current.B1--;
-        }
-
-        if (current.stage == 4 && current.B2 != 0) {
-          current.B2--;
-        }
-
-        if (current.stage == 2 && current.B1 == 0) {
-          current.stage = 3;
-        }
-
-        if (current.stage == 4 && current.B2 == 0) {
-          current.state = 4;
-          current.stage = 5;
-        }
-      }
-    }
-
-    // edge cases -> if all processes have gone through the cycle
-    if (cycled == n) {
-      cycled == 0;
-      cycle++;
-      
-      // if P is the last process in the cycle
-      if (current.pid == n) {
-        // ???
-      }
-
-      if (current.state == 3) {
-        process_is_running ==
-            false; // allows a new P to run instead of remain ready
-      }
-
-      if (current.R1 == 1 || current.R2 == 1) {
+      // if current will finish R1 next cycle
+      if (current.R1 == 0 && current.stage == 1) {
+        current.state = 3;
         current.stage = 2;
+      } 
+      
+      // if current will finish R2 next cycle
+      else if (current.R2 == 0 && current.stage == 3) {
+        current.state = 3;
+        current.stage = 4;
+      }
+
+      // if a process terminated this cycle -> reset the bools
+      if (process_is_terminating == true) {
+        terminated++;
+        process_is_running = false;
+        process_is_terminating = false;
       }
     }
 
-    // if a process terminated this cycle -> reset the bools
-    // same situation, allow the next process P to run instead of remain ready
-    if (process_is_terminating == true) {
-      process_is_running = false;
-      process_is_terminating = false;
+    if (cycle == 20) {
+      break;
     }
-    
-    // push P to back of queue
-    temp.push_back(current);
-    cycle++;
+
+    skipping:
+      processes.push(current);
   }
-}
+ }
 
 void rr() {}
 
@@ -212,7 +321,7 @@ int main() {
   int n;
   int SA;
   int q;
-  struct process p[10];
+  process p[10];
 
   bool is_done = false;
   cout << "Enter process count: ";
@@ -226,13 +335,12 @@ int main() {
     cin >> q;
   }
 
-  for (int i = 0; i < n; i++) {
-    p[i].pid = i + 1;
-    cout << "Enter R1 B1 R2 B2 for process " + p[i].pid;
+  for (int i = 1; i <= n ; i++) {
+    cout << "Enter R1 B1 R2 B2 for process " << i << ": ";
     cin >> p[i].R1 >> p[i].B1 >> p[i].R2 >> p[i].B2;
     p[i].state = 999;
     p[i].stage = 999;
-    cout << endl;
+    cout << "\n";
   }
 
   if (SA == 1) {
@@ -241,5 +349,5 @@ int main() {
     rr();
   }
 
-  return;
+  return 0;
 }
